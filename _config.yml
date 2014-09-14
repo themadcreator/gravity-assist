@@ -1,4 +1,4 @@
 url     : https://themadcreator.github.io
-baseurl : gravity-assist
+baseurl : /gravity-assist
 exclude :
  - server
