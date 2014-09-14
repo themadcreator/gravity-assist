@@ -49,6 +49,8 @@ class Ship
       mass      : 10
       fuel      : Ship.MAX_FUEL
       color     : 'red'
+      rotation  : 0
+      rotating  : 0
     })
 
 class Body
@@ -83,7 +85,8 @@ class Game
     return ship
 
 class Controls
-  @THRUST : 0.05
+  @ROTATION_SPEED : 0.0625
+  @THRUST         : 0.125
   @CHARACTER_MAPS : {
     right :
       left  : 37
@@ -105,24 +108,27 @@ class Controls
   keydown : (e) =>
     return if @down[e.which] # avoid autorepeat
     switch e.which
-      when @characterMap.left  then @ship.thrust.x = -Controls.THRUST # left
-      when @characterMap.up    then @ship.thrust.y = -Controls.THRUST # up
-      when @characterMap.right then @ship.thrust.x =  Controls.THRUST # right
-      when @characterMap.down  then @ship.thrust.y =  Controls.THRUST # down
+      when @characterMap.up
+        @ship.thrust.y  = -Controls.THRUST # up
+        @ship.thrusting = true
+      when @characterMap.down
+        @ship.thrust.y  =  Controls.THRUST # down
+        @ship.thrusting = true
+      when @characterMap.left  then @ship.rotating = -Controls.ROTATION_SPEED # left
+      when @characterMap.right then @ship.rotating =  Controls.ROTATION_SPEED # right
       else return
-    @ship.thrusting = true
     @down[e.which]  = true
     e.preventDefault()
 
   keyup : (e) =>
     switch e.which
-      when @characterMap.left  then @ship.thrust.x = 0 # left
-      when @characterMap.up    then @ship.thrust.y = 0 # up
-      when @characterMap.right then @ship.thrust.x = 0 # right
-      when @characterMap.down  then @ship.thrust.y = 0 # down
+      when @characterMap.up, @characterMap.down
+          @ship.thrust.y  = 0
+          @ship.thrusting = false
+      when @characterMap.left  then @ship.rotating = 0 # left
+      when @characterMap.right then @ship.rotating = 0 # right
       else return
     @down[e.which]  = false
-    @ship.thrusting = false
     e.preventDefault()
 
 class Sim
@@ -153,13 +159,14 @@ class Sim
   updatePhysics : ->
     for body in @game.state.bodies
       continue if body.pinned
-      @applyPhysics(body)
+      @applyPhysics(body, false)
 
     for ship in @game.state.ships
-      @applyPhysics(ship)
+      @applyPhysics(ship, true)
 
-  applyPhysics : (body) ->
+  applyPhysics : (body, isShip = false) ->
     acc = new Vector()
+
     for other in @game.state.bodies
       continue if body is other
       # Add contribution of gravitational force to acceleration
@@ -177,9 +184,17 @@ class Sim
     else if body.loc.y > GAME_HEIGHT - Sim.REPULSION_DIST
       acc.y -= Sim.REPULSION_FORCE * (body.loc.y - (GAME_HEIGHT - Sim.REPULSION_DIST))
 
-    # Add thrust
-    if body.thrust? and body.thrusting and body.fuel > 0
-      acc.add(body.thrust)
+    if isShip
+      # Apply rotation
+      body.rotation += body.rotating
+
+      # Apply thrust
+      if body.thrusting and body.fuel > 0
+        thrust = new Vector(
+          -Math.sin(body.rotation) * Controls.THRUST
+          Math.cos(body.rotation) * Controls.THRUST
+        )
+        acc.add(thrust)
 
     # Integrate
     body.vel.add(acc)
@@ -196,10 +211,18 @@ class Sim
       ctx.fill()
 
     for ship in @game.state.ships
+      ctx.save()
+      ctx.translate(ship.loc.x, ship.loc.y)
+      ctx.rotate(ship.rotation)
       ctx.beginPath()
-      ctx.arc(ship.loc.x, ship.loc.y, 10, 0, 2 * Math.PI, false)
+      ctx.moveTo(-5, -5)
+      ctx.lineTo( 0, 10)
+      ctx.lineTo( 5, -5)
+      ctx.lineTo( 0, -2)
+      ctx.closePath()
       ctx.fillStyle = ship.color
       ctx.fill()
+      ctx.restore()
 
     for player, i in @players
       ctx.fillStyle   = player.color
