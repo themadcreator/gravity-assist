@@ -1,0 +1,15 @@
+{
+  "name": "gravity-assist-server",
+  "version": "0.0.0",
+  "description": "",
+  "main": "app.coffee",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "themadcreator",
+  "license": "apache 2",
+  "dependencies": {
+    "socket.io": "^1.1.0",
+    "nodemon": "^1.2.1"
+  }
+}
